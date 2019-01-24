@@ -5,7 +5,6 @@ from .config import LOGIN_URL, API_VERSION
 from .exceptions import AuthorizationError
 from .adapters import SSLContextAdapter
 
-from requests.packages.urllib3.util.ssl_ import create_urllib3_context
 from requests.compat import OrderedDict
 from requests.cookies import cookiejar_from_dict
 from requests.utils import default_headers
