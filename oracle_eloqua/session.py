@@ -26,7 +26,7 @@ class EloquaSession:
         
         # Ensure successful login
         response = self.session.get(LOGIN_URL, 
-                auth=(company + '\\' + username, password)
+                auth=(company + '\\' + username, password))
         r = response.json()
         
         if r == 'Not authenticated.':
@@ -35,15 +35,13 @@ class EloquaSession:
             # Set auth for requests
             self.session.auth = (company + '\\' + username, password)
 
-            self.BASE_URL = r['urls']['base']
-            self.REST_API_URL = r['urls']['apis']['rest']['standard'].format(
-                version=self._api_version
-            )
-            self.BULK_API_URL = r['urls']['apis']['rest']['bulk'].format(
-                version=self._api_version
-            )
+            api_urls = r['urls']['apis']['rest']
+            for key in api_urls.keys():
+                api_urls[key] = api_urls[key].format(version=self._api_version)
+
+            api_urls['rest'] = api_urls['standard']
+            self.api_urls = api_urls
 
             # Mount the base url
-            self.session.mount(self.BASE_URL, adapter)
-
+            self.session.mount(r['urls']['base'], adapter)
 

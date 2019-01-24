@@ -50,18 +50,77 @@ class EloquaApi:
     def get_default_api(cls):
         return cls._default_api
 
+    def call(self, method, path, api_type=None, params=None):
+        if method in ('GET','DELETE'):
+            params = params or {}
+            data = {}
+        else:
+            data = params or {}
+            params = {}
+        
+        if not isinstance(path, str):
+            path = '/'.join((
+                _session.api_urls[api_type.lower() or 'rest'], 
+                '/'.join(map(str, path))
+            ))
+        
+        response = self._session.request(
+            method=method, path=path, params=params, data=data,
+            timeout=self._session.timeout
+        )
+
+        # might create an object associated to response to allow for things
+        # like EloquaResponse.to_dataframe()
+        return response
+        
 
 class EloquaRequest:
     '''
     '''
 
-    def __init__(self, method, endpoint, api=None):
+    def __init__(self, method, endpoint, 
+                 obj_id=None, api=None, api_type=None):
         self._api = api or EloquaApi.get_default_api()
         self._method = method
-        self._endpoint = endpoint.replace('/', '')
-        self._api_url = self._api.REST_API_URL
+        self._endpoint = list(filter(endpoint.split('/')))
+        self._id = [obj_id] or []
+        self._path = self._endpoint + self._id
+        self._api_type = api_type or 'post'
+        self._params = {}
 
-        self._url = self._api_url + '/' + self._endpoint
+    def add_params(self, params):
+        if params:
+            for key, value in params.items():
+                # add method for validating parameters
+                self._params[key] = value
 
+        return self
+        
+    def execute(self):
+        if self._method =='GET':
+            cursor = Cursor(
+                params=self._params,
+                endpoint=self._endpoint,
+                api=self._api,
+                api_type=self._api_type
+            )
+
+            cursor.load()
+            return cursor
+        else:
+            response = self._api.call(
+                    method=self._methd,
+                    path=self._path,
+                    params=self._params,
+                    api_type=self._api_type
+            )
+            return response
+
+# create method to load each page into single json
+class Cursor:
+    '''
+    '''
+    def __init__(self, params=None, endpoint=None, api=None, api_type=None):
+        pass
 
 
