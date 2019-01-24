@@ -58,6 +58,10 @@ class EloquaRequest:
     def __init__(self, method, endpoint, api=None):
         self._api = api or EloquaApi.get_default_api()
         self._method = method
-        self._endpoint = endpoint
+        self._endpoint = endpoint.replace('/', '')
+        self._api_url = self._api.REST_API_URL
+
+        self._url = self._api_url + '/' + self._endpoint
+
 
 
