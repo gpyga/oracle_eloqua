@@ -11,7 +11,9 @@ class EloquaApi:
              api_version=None, proxies=None, timeout=None):
         
         session = EloquaSession(company, username, password, proxies, timeout)
-
+        api = cls(session, api_version)
+        cls.set_default_api(api)
+        
         return cls(session, api_version)
 
     @classmethod
@@ -23,9 +25,8 @@ class EloquaApi:
         username = j['username']
         password = j['password']
 
-        session = EloquaSession(company, username, password, proxies, timeout)
-
-        return cls(session, api_version)
+        return cls.init(company, username, password, 
+                        api_version, proxies, timeout)
 
     @classmethod
     def from_string(cls, credentials, 
@@ -33,7 +34,13 @@ class EloquaApi:
         [user, password] = credentials.split(':', 1)
         [company, username] = user.split('//', 1)
 
-        session = EloquaSession(company, username, password, proxies, timeout)
+        return cls.init(company, username, password, 
+                        api_version, proxies, timeout)
 
-        return cls(session, api_version)
+    @classmethod
+    def set_default_api(cls, api):
+        cls._default_api = api
 
+    @classmethod
+    def get_default_api(cls):
+        return cls._default_api
