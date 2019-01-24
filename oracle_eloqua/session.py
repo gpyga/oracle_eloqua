@@ -5,29 +5,25 @@ from .config import LOGIN_URL, API_VERSION
 from .exceptions import AuthorizationError
 from .adapters import SSLContextAdapter
 
-from requests.compat import OrderedDict
-from requests.cookies import cookiejar_from_dict
-from requests.utils import default_headers
-from requests.models import DEFAULT_REDIRECT_LIMIT
-from requests.hooks import default_hooks
-
- 
 class EloquaSession:
     def __init__(self, company=None, username=None, password=None,
-                 proxies=None, timeout=None):
+                 api_version=None, proxies=None, timeout=None):
         self.company = company
         self.username = username
         self.proxies = proxies
         self.timeout = timeout
+        self._api_version = api_version or API_VERSION
         self.requests = requests.Session()
 
         if self.proxies:
             self.requests.proxies.update(self.proxies)
-
-        # Set connection adapters to only accept login by default
+        
+        # Get SSL Context from OS defaults
         adapter = SSLContextAdapter()
+        # Set connection adapters to only accept login by default
         self.requests.mount(LOGIN_URL, adapter)
         
+        # Ensure successful login
         response = self.requests.get(LOGIN_URL, 
                 auth=(company + '\\' + username, password)
         r = response.json()
@@ -39,11 +35,11 @@ class EloquaSession:
             self.requests.auth = (company + '\\' + username, password)
 
             self.BASE_URL = r['urls']['base']
-            self.REST_API = r['urls']['apis']['rest']['standard'].format(
-                version=API_VERSION
+            self.REST_API_URL = r['urls']['apis']['rest']['standard'].format(
+                version=self._api_version
             )
-            self.BULK_API = r['urls']['apis']['rest']['bulk'].format(
-                version=API_VERSION
+            self.BULK_API_URL = r['urls']['apis']['rest']['bulk'].format(
+                version=self._api_version
             )
 
             # Mount the base url

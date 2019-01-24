@@ -2,15 +2,20 @@ from .session import EloquaSession
 from .config import API_VERSION 
 
 class EloquaApi:
-    def __init__(self, session, api_version=None):
+    '''
+    '''
+    def __init__(self, session):
         self._session = session
         self._api_version = api_version or API_VERSION
+        self.REST_API_URL = session.REST_API_URL 
     
     @classmethod
     def init(cls, company=None, username=None, password=None, 
              api_version=None, proxies=None, timeout=None):
         
-        session = EloquaSession(company, username, password, proxies, timeout)
+        session = EloquaSession(
+                company, username, password, 
+                api_version, proxies, timeout)
         api = cls(session, api_version)
         cls.set_default_api(api)
         
@@ -44,3 +49,15 @@ class EloquaApi:
     @classmethod
     def get_default_api(cls):
         return cls._default_api
+
+
+class EloquaRequest:
+    '''
+    '''
+
+    def __init__(self, method, endpoint, api=None):
+        self._api = api or EloquaApi.get_default_api()
+        self._method = method
+        self._endpoint = endpoint
+
+
