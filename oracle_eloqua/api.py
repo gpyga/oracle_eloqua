@@ -98,7 +98,7 @@ class EloquaRequest:
         return self
         
     def execute(self):
-        if self._method =='GET':
+        if self._method == 'GET':
             cursor = Cursor(
                 params=self._params,
                 path=self._path,
@@ -137,21 +137,40 @@ class Cursor:
             meta_params['page'] = 1
             meta_params['count'] = 1
             meta = self._api_call(
-                method="GET",
+                method='GET',
                 params=meta_params,
-                path=self._path,
-                api=self._api
+                path=self._path
             )
             return meta.json()['total']
     
     def execute(self):
         totals = self.totals()
-        # Calculates the total number of pages to download
-        total_pages = int((i - 1) / 1000) + 1
-        queue = totals
+        params = self._params
 
-        for i in range(total_pages):
-            params['page'] = i + 1
+        # Calculates the total number of pages to download and sets queue
+        if 'page' in params.keys():
+            pages = [params['page']]
+            queue = min(1000, totals) # ensure queue maxes at 1000
+        else:
+            pages = range(1, int((totals - 1) / 1000) + 2)
+            queue = totals
+        
+        response = {
+            'elements': [],  
+            'total': totals
+        }
+
+        for page in pages:
+            params['page'] = page
             params['count'] = min(1000, queue)
             
+            resp = self._api.call(
+                method='GET',
+                path=self._path,
+                params=params
+            )
+            
+            resp['elements']
+
+            queue -= params['count']
             
