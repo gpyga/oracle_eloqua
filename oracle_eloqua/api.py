@@ -51,6 +51,8 @@ class EloquaApi:
         return cls._default_api
 
     def call(self, method, path, params=None):
+        ''' Always returns a json
+        '''
         if method in ('GET','DELETE'):
             params = params or {}
             data = {}
@@ -73,7 +75,7 @@ class EloquaApi:
 
         # might create an object associated to response to allow for things
         # like EloquaResponse.to_dataframe()
-        return response
+        return response.json()
         
 
 class EloquaRequest:
@@ -117,7 +119,7 @@ class EloquaRequest:
 
 class Cursor:
     '''
-        A cursor for handling GET requests with more than 1000 results
+        A cursor for handling GET requests, especially with over 1000 results
     '''
     def __init__(self, params=None, path=None, api=None, api_type=None):
         self._params = params or {}
@@ -126,8 +128,8 @@ class Cursor:
         self._api_type = api_type.lower() or 'rest'
 
     def totals(self):
-        ''' Returns the total size of the query to handle 
-            the n
+        ''' Returns the total size of the query to handle.
+            If `page` is specified, automatically sets the count to 1000
         '''
         if 'count' in self._params.keys():
             return self._params['count']
@@ -150,13 +152,13 @@ class Cursor:
         # Calculates the total number of pages to download and sets queue
         if 'page' in params.keys():
             pages = [params['page']]
-            queue = min(1000, totals) # ensure queue maxes at 1000
         else:
             pages = range(1, int((totals - 1) / 1000) + 2)
-            queue = totals
+        
+        queue = totals
         
         response = {
-            'elements': [],  
+            'elements': [],
             'total': totals
         }
 
@@ -170,7 +172,9 @@ class Cursor:
                 params=params
             )
             
-            resp['elements']
+            response['elements'].extend(resp['elements'])
 
             queue -= params['count']
-            
+
+        return response
+
