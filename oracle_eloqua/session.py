@@ -27,6 +27,9 @@ class EloquaSession:
         # Ensure successful login
         response = self.session.get(LOGIN_URL, 
                 auth=(company + '\\' + username, password))
+
+        response.raise_for_status()
+
         r = response.json()
         
         if r == 'Not authenticated.':
