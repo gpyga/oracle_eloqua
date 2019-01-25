@@ -50,7 +50,7 @@ class EloquaApi:
     def get_default_api(cls):
         return cls._default_api
 
-    def call(self, method, path, api_type=None, params=None):
+    def call(self, method, path, params=None):
         if method in ('GET','DELETE'):
             params = params or {}
             data = {}
@@ -60,7 +60,7 @@ class EloquaApi:
         
         if not isinstance(path, str):
             path = '/'.join((
-                _session.api_urls[api_type.lower() or 'rest'], 
+                _session.api_urls['rest'], 
                 '/'.join(map(str, path))
             ))
         
@@ -68,6 +68,8 @@ class EloquaApi:
             method=method, path=path, params=params, data=data,
             timeout=self._session.timeout
         )
+
+        response.raise_for_status()
 
         # might create an object associated to response to allow for things
         # like EloquaResponse.to_dataframe()
@@ -79,13 +81,12 @@ class EloquaRequest:
     '''
 
     def __init__(self, method, endpoint, 
-                 obj_id=None, api=None, api_type=None):
+                 obj_id=None, api=None):
         self._api = api or EloquaApi.get_default_api()
         self._method = method
         self._endpoint = list(filter(endpoint.split('/')))
         self._id = [obj_id] or []
         self._path = self._endpoint + self._id
-        self._api_type = api_type or 'post'
         self._params = {}
 
     def add_params(self, params):
@@ -100,27 +101,57 @@ class EloquaRequest:
         if self._method =='GET':
             cursor = Cursor(
                 params=self._params,
-                endpoint=self._endpoint,
-                api=self._api,
-                api_type=self._api_type
+                path=self._path,
+                api=self._api
             )
 
-            cursor.load()
+            cursor.execute()
             return cursor
         else:
             response = self._api.call(
-                    method=self._methd,
-                    path=self._path,
-                    params=self._params,
-                    api_type=self._api_type
+                method=self._method,
+                path=self._path,
+                params=self._params
             )
             return response
 
-# create method to load each page into single json
 class Cursor:
     '''
+        A cursor for handling GET requests with more than 1000 results
     '''
-    def __init__(self, params=None, endpoint=None, api=None, api_type=None):
-        pass
+    def __init__(self, params=None, path=None, api=None, api_type=None):
+        self._params = params or {}
+        self._path = path
+        self._api = api
+        self._api_type = api_type.lower() or 'rest'
 
+    def totals(self):
+        ''' Returns the total size of the query to handle 
+            the n
+        '''
+        if 'count' in self._params.keys():
+            return self._params['count']
+        elif 'page' in self._params.keys():
+            return 1000
+        else:
+            meta_params['page'] = 1
+            meta_params['count'] = 1
+            meta = self._api_call(
+                method="GET",
+                params=meta_params,
+                path=self._path,
+                api=self._api
+            )
+            return meta.json()['total']
+    
+    def execute(self):
+        totals = self.totals()
+        # Calculates the total number of pages to download
+        total_pages = int((i - 1) / 1000) + 1
+        queue = totals
 
+        for i in range(total_pages):
+            params['page'] = i + 1
+            params['count'] = min(1000, queue)
+            
+            
