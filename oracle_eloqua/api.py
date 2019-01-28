@@ -78,7 +78,7 @@ class EloquaApi:
 
         # might create an object associated to response to allow for things
         # like EloquaResponse.to_dataframe()
-        return response.json()
+        return response
         
 
 class EloquaRequest:
@@ -112,15 +112,26 @@ class EloquaRequest:
                 api=self._api
             )
 
-            response = cursor.execute()
+            response = {
+                'elements': [],
+                'total': None
+            }
+
+            for row in iter(cursor):
+                response['elements'].append(row)
+
+            response['total'] = cursor._total
+
             return response
+
         else:
             response = self._api.call(
                 method=self._method,
                 path=self._path,
                 api_type=self._api_type,
                 params=self._params
-            )
+            ).json()
+
             return response
 
 class Cursor:
@@ -132,62 +143,45 @@ class Cursor:
         self._path = path
         self._api = api
         self._api_type = (api_type or 'rest').lower()
+       
+        self._queue = []
+        self._pages = params['page'] if 'page' in params else None
+        self._finished = False
+        self._total = None
 
-    def totals(self):
-        ''' Returns the total size of the query to handle.
-        '''
-        if 'count' in self._params.keys():
-            # count specified, with or without page
-            return self._params['count']
-        elif 'page' in self._params.keys():
-            # page and not count specified
-            return 1000
-        else:
-            # no page or count specified; get totals 
-            meta_params = self._params
-            meta_params['page'] = 1
-            meta_params['count'] = 1
-            meta = self._api.call(
-                method='GET',
-                params=meta_params,
-                path=self._path,
-                api_type=self._api_type
-            )
-            return meta['total']
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if not self._queue and not self.get_elements():
+            raise StopIteration()
+        return self._queue.pop(0)
+
+    def __getitem__(self, index):
+        return self._queue[index]
     
-    def execute(self):
-        totals = self.totals()
-        params = self._params
+    def get_elements(self):
+        if self._finished:
+            return False
 
-        # Calculates the total number of pages to download and sets queue
-        if 'page' in params.keys():
-            pages = [params['page']]
+        response = self._api.call(
+            method='GET',
+            path=self._path,
+            api_type=self._api_type,
+            params=self._params
+        ).json()
+
+        
+        # calculate number of pages
+        self._total = response['total']
+        pages = int((response['total'] - 1) / 1000) + 1
+        self._pages = self._pages if self._pages else pages
+        # determine whether to continue iterating
+        if response['page'] < self._pages:
+            self._params['page'] = response['page'] + 1
         else:
-            pages = range(1, int((totals - 1) / 1000) + 2)
-        
-        queue = totals
-        
-        response = {
-            'elements': [],
-            'total': totals
-        }
+            # terminate iteration
+            self._finished = True
 
-        for page in pages:
-            params['page'] = page
-            params['count'] = min(1000, totals)
-            
-            resp = self._api.call(
-                method='GET',
-                path=self._path,
-                api_type=self._api_type,
-                params=params
-            )
-            
-            response['elements'].extend(resp['elements'])
-            queue -= params['count']
-
-        if queue > 0:
-            warn('{queue} records were not returned.'.format(queue=queue))
-
-        return response
-
+        self._queue = response['elements']
+        return len(self._queue) > 0
