@@ -9,8 +9,8 @@ class EloquaApi:
     '''
     def __init__(self, session):
         self._session = session
-        self._api_version = api_version or API_VERSION
-        self.REST_API_URL = session.REST_API_URL 
+        self._session._api_version = api_version or API_VERSION
+         
     
     @classmethod
     def init(cls, company=None, username=None, password=None, 
@@ -65,7 +65,7 @@ class EloquaApi:
         
         if not isinstance(path, str):
             path = '/'.join((
-                _session.api_urls['rest'], 
+                self._session.api_urls['rest'], 
                 '/'.join(map(str, path))
             ))
         
