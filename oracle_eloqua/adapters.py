@@ -10,3 +10,8 @@ class SSLContextAdapter(HTTPAdapter):
         context.load_default_certs()
         return super(SSLContextAdapter, self).init_poolmanager(*args, **kwargs)
 
+    def proxy_manager_for(self, proxy, **kwargs):
+        context = create_urllib3_context()
+        kwargs['ssl_context'] = context
+        context.load_default_certs()
+        return super(SSLContextAdapter, self).proxy_manager_for(proxy, **kwargs)
