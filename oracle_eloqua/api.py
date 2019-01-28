@@ -9,8 +9,6 @@ class EloquaApi:
     '''
     def __init__(self, session):
         self._session = session
-        self._session._api_version = api_version or API_VERSION
-         
     
     @classmethod
     def init(cls, company=None, username=None, password=None, 
