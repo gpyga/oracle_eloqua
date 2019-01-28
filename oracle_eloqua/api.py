@@ -87,7 +87,7 @@ class EloquaRequest:
                  obj_id=None, api=None):
         self._api = api or EloquaApi.get_default_api()
         self._method = method
-        self._endpoint = list(filter(endpoint.split('/')))
+        self._endpoint = list(filter(None, endpoint.split('/')))
         self._id = [obj_id] or []
         self._path = self._endpoint + self._id
         self._params = {}
