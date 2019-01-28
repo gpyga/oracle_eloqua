@@ -148,7 +148,7 @@ class Cursor:
                 path=self._path,
                 api_type=self._api_type
             )
-            return meta.json()['total']
+            return meta['total']
     
     def execute(self):
         totals = self.totals()
