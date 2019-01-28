@@ -21,7 +21,7 @@ class EloquaApi:
         api = cls(session, api_version)
         cls.set_default_api(api)
         
-        return cls(session, api_version)
+        return cls(session)
 
     @classmethod
     def from_json(cls, filepath, 
