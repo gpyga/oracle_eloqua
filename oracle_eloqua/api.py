@@ -1,5 +1,7 @@
 from .session import EloquaSession
-from .config import API_VERSION 
+from .config import API_VERSION
+
+import json
 
 class EloquaApi:
     '''
@@ -51,7 +53,7 @@ class EloquaApi:
         return cls._default_api
 
     def call(self, method, path, params=None):
-        ''' Always returns a json
+        ''' Always returns a json response
         '''
         if method in ('GET','DELETE'):
             params = params or {}
@@ -129,12 +131,9 @@ class Cursor:
 
     def totals(self):
         ''' Returns the total size of the query to handle.
-            If `page` is specified, automatically sets the count to 1000
         '''
         if 'count' in self._params.keys():
             return self._params['count']
-        elif 'page' in self._params.keys():
-            return 1000
         else:
             meta_params['page'] = 1
             meta_params['count'] = 1
@@ -175,6 +174,11 @@ class Cursor:
             response['elements'].extend(resp['elements'])
 
             queue -= params['count']
+
+        if queue > 0:
+            warn('''{queue} records were not returned due to page constraint. 
+            To suppress this message, do not set a count above 1k when 
+            a page argument is passed.'''.format(queue=queue))
 
         return response
 
