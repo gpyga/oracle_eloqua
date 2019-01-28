@@ -51,9 +51,10 @@ class EloquaApi:
     def get_default_api(cls):
         return cls._default_api
 
-    def call(self, method, path, params=None):
+    def call(self, method, path, api_type, params=None):
         ''' Always returns a json response
         '''
+        # ensures data or params is set properly on methods
         if method in ('GET','DELETE'):
             params = params or {}
             data = {}
@@ -61,14 +62,15 @@ class EloquaApi:
             data = params or {}
             params = {}
         
+        url_prefix = self._session.api_urls[api_type]
         if not isinstance(path, str):
-            path = '/'.join((
-                self._session.api_urls['rest'], 
+            url = '/'.join((
+                url_prefix.strip('/'), 
                 '/'.join(map(str, path))
-            ))
+            )).strip('/')
         
-        response = self._session.request(
-            method=method, path=path, params=params, data=data,
+        response = self._session.session.request(
+            method=method, url=url, params=params, data=data,
             timeout=self._session.timeout
         )
 
@@ -83,13 +85,14 @@ class EloquaRequest:
     '''
     '''
 
-    def __init__(self, method, endpoint, 
+    def __init__(self, method, endpoint, api_type=None,
                  obj_id=None, api=None):
         self._api = api or EloquaApi.get_default_api()
         self._method = method
         self._endpoint = list(filter(None, endpoint.split('/')))
-        self._id = [obj_id] or []
-        self._path = self._endpoint + self._id
+        self._id = obj_id or ''
+        self._api_type = (api_type or 'rest').lower()
+        self._path = self._endpoint + [self._id]
         self._params = {}
 
     def add_params(self, params):
@@ -105,6 +108,7 @@ class EloquaRequest:
             cursor = Cursor(
                 params=self._params,
                 path=self._path,
+                api_type=self._api_type,
                 api=self._api
             )
 
@@ -114,6 +118,7 @@ class EloquaRequest:
             response = self._api.call(
                 method=self._method,
                 path=self._path,
+                api_type=self._api_type,
                 params=self._params
             )
             return response
@@ -126,7 +131,7 @@ class Cursor:
         self._params = params or {}
         self._path = path
         self._api = api
-        self._api_type = api_type.lower() or 'rest'
+        self._api_type = (api_type or 'rest').lower()
 
     def totals(self):
         ''' Returns the total size of the query to handle.
@@ -134,12 +139,14 @@ class Cursor:
         if 'count' in self._params.keys():
             return self._params['count']
         else:
+            meta_params = self._params
             meta_params['page'] = 1
             meta_params['count'] = 1
-            meta = self._api_call(
+            meta = self._api.call(
                 method='GET',
                 params=meta_params,
-                path=self._path
+                path=self._path,
+                api_type=self._api_type
             )
             return meta.json()['total']
     
@@ -167,6 +174,7 @@ class Cursor:
             resp = self._api.call(
                 method='GET',
                 path=self._path,
+                api_type=self._api_type,
                 params=params
             )
             
