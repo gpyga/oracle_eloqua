@@ -112,8 +112,8 @@ class EloquaRequest:
                 api=self._api
             )
 
-            cursor.execute()
-            return cursor
+            response = cursor.execute()
+            return response
         else:
             response = self._api.call(
                 method=self._method,
@@ -137,8 +137,13 @@ class Cursor:
         ''' Returns the total size of the query to handle.
         '''
         if 'count' in self._params.keys():
+            # count specified, with or without page
             return self._params['count']
+        elif 'page' in self._params.keys():
+            # page and not count specified
+            return 1000
         else:
+            # no page or count specified; get totals 
             meta_params = self._params
             meta_params['page'] = 1
             meta_params['count'] = 1
@@ -169,7 +174,7 @@ class Cursor:
 
         for page in pages:
             params['page'] = page
-            params['count'] = min(1000, queue)
+            params['count'] = min(1000, totals)
             
             resp = self._api.call(
                 method='GET',
@@ -179,13 +184,10 @@ class Cursor:
             )
             
             response['elements'].extend(resp['elements'])
-
             queue -= params['count']
 
         if queue > 0:
-            warn('''{queue} records were not returned due to page constraint. 
-            To suppress this message, do not set a count above 1k when 
-            a page argument is passed.'''.format(queue=queue))
+            warn('{queue} records were not returned.'.format(queue=queue))
 
         return response
 
