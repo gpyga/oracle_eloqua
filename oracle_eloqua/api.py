@@ -2,6 +2,7 @@ from .session import EloquaSession
 from .config import API_VERSION
 
 import json
+from warnings import warn
 
 class EloquaApi:
     '''
@@ -18,10 +19,10 @@ class EloquaApi:
         session = EloquaSession(
                 company, username, password, 
                 api_version, proxies, timeout)
-        api = cls(session, api_version)
+        api = cls(session)
         cls.set_default_api(api)
         
-        return cls(session)
+        return api
 
     @classmethod
     def from_json(cls, filepath, 
