@@ -1,9 +1,9 @@
 import json
 from requests import Session
 
-from .config import LOGIN_URL, API_VERSION
-from .exceptions import AuthorizationError
-from .adapters import SSLContextAdapter
+from oracle_eloqua.config import LOGIN_URL, API_VERSION
+from oracle_eloqua.exceptions import AuthorizationError
+from oracle_eloqua.adapters import SSLContextAdapter
 
 class EloquaSession:
     def __init__(self, company=None, username=None, password=None,

@@ -1,5 +1,5 @@
-from .session import EloquaSession
-from .config import API_VERSION
+from oracle_eloqua.session import EloquaSession
+from oracle_eloqua.config import API_VERSION
 
 import json
 from warnings import warn
