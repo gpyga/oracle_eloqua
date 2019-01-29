@@ -5,7 +5,9 @@ class EloquaObject:
     """
     def __init__(self, id):
         pass
-
+    
+    @classmethod
+    def create(cls, params=None):
 
 class EloquaQuery:
     """ Generic object class for Eloqua queries (ie - campaigns)
