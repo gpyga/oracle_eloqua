@@ -111,16 +111,7 @@ class EloquaRequest:
                 api_type=self._api_type,
                 api=self._api
             )
-
-            response = {
-                'elements': [],
-                'total': None
-            }
-
-            for row in iter(cursor):
-                response['elements'].append(row)
-
-            response['total'] = cursor._total
+            response = cursor.fetchall()
 
             return response
 
@@ -153,14 +144,20 @@ class Cursor:
         return self
 
     def __next__(self):
-        if not self._queue and not self.get_elements():
+        if not self._queue and not self.execute():
             raise StopIteration()
         return self._queue.pop(0)
+
+    def __repr__(self):
+        return str(self._queue)
+
+    def __len__(self):
+        return len(self._queue)
 
     def __getitem__(self, index):
         return self._queue[index]
     
-    def get_elements(self):
+    def execute(self):
         if self._finished:
             return False
 
@@ -170,8 +167,7 @@ class Cursor:
             api_type=self._api_type,
             params=self._params
         ).json()
-
-        
+    
         # calculate number of pages
         self._total = response['total']
         pages = int((response['total'] - 1) / 1000) + 1
@@ -185,3 +181,12 @@ class Cursor:
 
         self._queue = response['elements']
         return len(self._queue) > 0
+
+    def fetchall(self):
+        response = {'elements':[], 'total': self._total}
+
+        for row in self:
+            response['elements'].append(row)
+
+        return response
+
