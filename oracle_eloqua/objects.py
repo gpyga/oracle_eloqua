@@ -2,16 +2,57 @@ from oracle_eloqua.api import EloquaRequest, EloquaApi
 from warnings import warn
 
 class EloquaObject:
-    """ Generic object class for Eloqua objects.
+    """ 
+    Generic object class for Eloqua objects. Can retireve attributes
+    as items in dict or as attributes in object.
     """
+
     def __init__(self, obj_id=None, api=None):
-        self._data = {}
-        self._obj_id = obj_id
+        self._id = obj_id
         self._api = api or EloquaApi.get_default_api()
+        self._data = {}
     
-    # Create is set up as a class method, so as to return the object id
+    def __getitem__(self, key):
+        return self._data[key]
+
+    def __delitem__(self, key):
+        del self._data[key]
+
+    def __setitem__(self, key, value):
+        self._data[key] = value
+        setattr(self, key, value)
+
+    def __contains__(self, key):
+        return key in self._data
+    
+    def __setattr__(self, key, value):
+        if hasattr(self, '_data'):
+            self._data[key] = value
+        super().__setattr__(key, value)
+        
+    def _set_data(self, data):
+        self._data = data
+        for key, value in self._data.items():
+            setattr(self, key, value)
+        if not hasattr(self, '_id'):
+            self._id = self['id']
+
+    @classmethod
+    def create_object(cls, data, api=None):
+        """
+        Creates an ojbect from data (json dump)
+        """        
+        obj = cls(api=api)
+        obj._set_data(data)
+
+        return obj
+
+    ## CRUD methods
     @classmethod
     def create(cls, api=None, **kwargs):
+        """ 
+        Creates a new object from the server
+        """
         request = EloquaRequest(
             method='POST',
             endpoint='',
@@ -21,31 +62,28 @@ class EloquaObject:
         request.add_params(kwargs)
         response = request.execute()
 
-        obj_id = request['id']
-
-        return cls(obj_id, api)
-
+        return cls.create_object(response, api=api)
+        
     def read(self):
+        """ 
+        Reads data on the server and updates local object attributes. 
+        Requires obj_id to be set
+        """
         request = EloquaRequest(
             method='GET',
             enpoint='',
+            obj_id=self._id,
             api=self._api,
             api_type='rest'
         )
-        response = request.execute()
 
-    def update(self, **kwargs):
-        warn('This method doesn''t do anything yet')
+        response = request.execute()
+        self._set_data(response)
+
+    def update(self):
+        warn('This method is intentially left blank')
 
     def delete(self):
-        warn('This method doesn''t do anything yet')
+        # Will work on this after permission
+        warn('This method is intentially left blank')
 
-
-class EloquaQuery:
-    """ Generic object class for Eloqua queries (ie - campaigns)
-    """
-    def __init__(self, **kwargs):
-        pass
-
-    def search(self):
-        pass
