@@ -77,15 +77,14 @@ class EloquaApi:
 
         response.raise_for_status()
 
-        # might create an object associated to response to allow for things
-        # like EloquaResponse.to_dataframe()
+        # might create an object associated to response to allow for 
+        # methods like EloquaResponse.to_dataframe()
         return response
         
 
 class EloquaRequest:
+    ''' 
     '''
-    '''
-
     def __init__(self, method, endpoint, api_type=None,
                  obj_id=None, api=None):
         self._api = api or EloquaApi.get_default_api()
@@ -112,7 +111,7 @@ class EloquaRequest:
                 api_type=self._api_type,
                 api=self._api
             )
-            response = cursor.fetchall()
+            response = cursor.execute()
 
             return response
 
@@ -128,7 +127,8 @@ class EloquaRequest:
 
 class Cursor:
     '''
-        A cursor for handling GET requests, especially with over 1000 results
+        A cursor for handling GET requests, including an iterator
+        for handling large responses (>1000 results)
     '''
     def __init__(self, params=None, path=None, api=None, api_type=None):
         self._params = params or {}
@@ -146,7 +146,7 @@ class Cursor:
         return self
 
     def __next__(self):
-        if not self._queue and not self.execute():
+        if not self._queue and not self.load():
             raise StopIteration()
         return self._queue.pop(0)
 
@@ -159,7 +159,7 @@ class Cursor:
     def __getitem__(self, index):
         return self._response[index]
     
-    def execute(self):
+    def load(self):
         if self._finished:
             return False
 
@@ -189,20 +189,18 @@ class Cursor:
         if 'elements' in response:
             self._queue = response['elements']
             del self._data['elements']
+        else:
+            self._response = self._data
 
         return len(self._queue) > 0
     
-    def fetchall(self):
+    def execute(self):
         for row in self:
-            if self._queue and self._response['elements']:
+            if self._queue and 'elements' in self._response:
                 self._response['elements'].append(row)
             elif self._queue:
                 self._response = self._data
-                self._response['elements'] = row
-            else:
-                self._response = self._data
-
-
+                self._response['elements'] = [row]
 
         return self._response
 
