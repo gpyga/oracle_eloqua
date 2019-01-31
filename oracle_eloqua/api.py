@@ -1,13 +1,11 @@
 from oracle_eloqua.session import EloquaSession
-from oracle_eloqua.config import API_VERSION
+from oracle_eloqua.config import API_VERSION, PAGE_SIZE
 
 import json
 from warnings import warn
 from copy import deepcopy
 
 class EloquaApi:
-    '''
-    '''
     def __init__(self, session):
         self._session = session
     
@@ -53,8 +51,6 @@ class EloquaApi:
         return cls._default_api
 
     def call(self, method, path, api_type, params=None):
-        ''' Always returns a json response
-        '''
         # ensures data or params is set properly on methods
         if method in ('GET','DELETE'):
             params = params or {}
@@ -83,8 +79,6 @@ class EloquaApi:
         
 
 class EloquaRequest:
-    ''' 
-    '''
     def __init__(self, method, endpoint, api_type=None,
                  obj_id=None, api=None):
         self._api = api or EloquaApi.get_default_api()
@@ -126,10 +120,10 @@ class EloquaRequest:
             return response
 
 class Cursor:
-    '''
-        A cursor for handling GET requests, including an iterator
-        for handling large responses (>1000 results)
-    '''
+    """
+    A cursor for handling GET requests, including an iterator
+    for handling large responses (>1000 results)
+    """
     def __init__(self, params=None, path=None, 
                  api=None, api_type=None):
         self._params = params or {}
@@ -173,7 +167,7 @@ class Cursor:
     
         # calculate number of pages
         self._total = response['total'] if 'total' in response else 1
-        pages = int((self._total - 1) / 1000) + 1
+        pages = int((self._total - 1) / PAGE_SIZE) + 1
         self._pages = self._pages if self._pages else pages
 
         self._page = response['page'] if 'page' in response else 1
@@ -192,12 +186,12 @@ class Cursor:
             del self._data['elements']
         else:
             self._response = self._data
-
+        
         return len(self._queue) > 0
     
     def execute(self):
         for row in self:
-            if self._queue and 'elements' in self._response:
+            if 'elements' in self._response:
                 self._response['elements'].append(row)
             elif self._queue:
                 self._response = self._data
