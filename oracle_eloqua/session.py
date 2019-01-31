@@ -33,14 +33,17 @@ class EloquaSession:
         r = response.json()
         
         if r == 'Not authenticated.':
-            raise AuthorizationError('Could not authenticate ' + username)
+            raise AuthorizationError(
+                'Could not authenticate {}'.format(username))
         else:
             # Set auth for requests
             self.session.auth = (company + '\\' + username, password)
 
             api_urls = r['urls']['apis']['rest']
             for key in api_urls.keys():
-                api_urls[key] = api_urls[key].format(version=self._api_version)
+                api_urls[key] = api_urls[key].format(
+                    version=self._api_version
+                )
 
             api_urls['rest'] = api_urls['standard']
             self.api_urls = api_urls

@@ -130,7 +130,8 @@ class Cursor:
         A cursor for handling GET requests, including an iterator
         for handling large responses (>1000 results)
     '''
-    def __init__(self, params=None, path=None, api=None, api_type=None):
+    def __init__(self, params=None, path=None, 
+                 api=None, api_type=None):
         self._params = params or {}
         self._path = path
         self._api = api
