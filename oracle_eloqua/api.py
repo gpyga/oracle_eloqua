@@ -85,7 +85,7 @@ class EloquaRequest:
         self._method = method
         self._endpoint = list(filter(None, endpoint.split('/')))
         self._id = obj_id or ''
-        self._api_type = (api_type or 'rest').lower()
+        self._api_type = (api_type or 'REST').upper()
         self._path = self._endpoint + [self._id]
         self._params = {}
 
@@ -122,14 +122,14 @@ class EloquaRequest:
 class Cursor:
     """
     A cursor for handling GET requests, including an iterator
-    for handling large responses (>1000 results)
+    for handling large responses (>1k for REST, >50k for BULK)
     """
     def __init__(self, params=None, path=None, 
                  api=None, api_type=None):
         self._params = params or {}
         self._path = path
         self._api = api
-        self._api_type = (api_type or 'rest').lower()
+        self._api_type = (api_type or 'REST').upper()
        
         self._response = self._data = {}
         self._queue = []
@@ -137,13 +137,26 @@ class Cursor:
         self._finished = False
         self._total = None
 
+        # Explicit BULK API Handling
+        if self._api_type == 'BULK':
+            if 'limit' not in self._params:
+                self._params['limit'] = 50000
+            if 'offset' not in self._params:
+                self._params['offset'] = 0
+
     def __iter__(self):
         return self
 
     def __next__(self):
         if not self._queue and not self.load():
             raise StopIteration()
-        return self._queue.pop(0)
+        # BULK returns `limit` at a time, REST returns 1
+        if self._api_type == 'BULK':
+            queue = self._queue
+            self._queue = []
+            return queue
+        else:
+            return self._queue.pop(0)
 
     def __repr__(self):
         return str(self._response)
@@ -164,39 +177,55 @@ class Cursor:
             api_type=self._api_type,
             params=self._params
         ).json()
-    
-        # calculate number of pages
-        self._total = response['total'] if 'total' in response else 1
-        pages = int((self._total - 1) / PAGE_SIZE) + 1
-        self._pages = self._pages if self._pages else pages
-
-        self._page = response['page'] if 'page' in response else 1
-
-        # determine whether to continue iterating
-        if self._page < self._pages:
-            self._params['page'] = self._page + 1
-        else:
-            # terminate iteration
-            self._finished = True
-            
+        
         self._data = deepcopy(response)
 
-        if 'elements' in response:
-            self._queue = response['elements']
-            del self._data['elements']
+        if self._api_type == 'BULK':
+            self._total = response['totalResults']
+            self._params['offset'] += self._params['limit']
+            self._finished = response['hasMore']
         else:
-            self._response = self._data
+            if 'total' in response:
+                self._total = response['total'] 
+            else:
+                self._total = 1
+
+            pages = self._pages or int((self._total - 1) / PAGE_SIZE) + 1
+            page = response['page'] if 'page' in response else 1
+            self._params['page'] = page + 1
+            self._finished = not (page < pages) # "not pages left"
         
+        for key in ['elements','items']:
+            if key in response:
+                self._queue = response[key]
+                del self._data[key]
+
         return len(self._queue) > 0
     
     def execute(self):
-        for row in self:
-            if 'elements' in self._response:
-                self._response['elements'].append(row)
-            elif self._queue:
-                self._response = self._data
-                self._response['elements'] = [row]
+
+        if self._api_type == 'BULK':
+            self._response['items'] = []
+            for queue in self:
+                self._response['items'].extend(queue)
+        else:
+            self._response['elements'] = []
+            for element in self:
+                element = element # trivial until object work is done
+                self._response['elements'].append(element)
+        
+        # append data features
+        for key in list(self._data):
+            self._response[key] = self._data[key]
+
+        # cleanup unneeded or empty features
+        dropkeys = ['page', 'pageSize', 'limit', 'offset', 'count']
+        for key in list(self._response):
+            if not self._response[key] or key in dropkeys:
+                del self._response[key]
+        
+        # detatch data
+        del self._data
 
         return self._response
-
 

@@ -40,12 +40,14 @@ class EloquaSession:
             self.session.auth = (company + '\\' + username, password)
 
             api_urls = r['urls']['apis']['rest']
-            for key in api_urls.keys():
-                api_urls[key] = api_urls[key].format(
+            for key in list(api_urls):
+                # set api urls; uppercase them
+                api_urls[key.upper()] = api_urls[key].format(
                     version=self._api_version
                 )
+                del api_urls[key]
 
-            api_urls['rest'] = api_urls['standard']
+            api_urls['REST'] = api_urls['STANDARD']
             self.api_urls = api_urls
 
             # Mount the base url
