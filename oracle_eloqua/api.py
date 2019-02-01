@@ -51,14 +51,6 @@ class EloquaApi:
         return cls._default_api
 
     def call(self, method, path, api_type, params=None):
-        # ensures data or params is set properly on methods
-        if method in ('GET','DELETE'):
-            params = params or {}
-            data = {}
-        else:
-            data = params or {}
-            params = {}
-        
         url_prefix = self._session.api_urls[api_type]
         if not isinstance(path, str):
             url = '/'.join((
@@ -66,17 +58,22 @@ class EloquaApi:
                 '/'.join(map(str, path))
             )).strip('/')
         
+        # Ensure correct parameters are set
+        if method in ['GET', 'DELETE']:
+            params = params or {}
+            json = {}
+        else:
+            json = params or {}
+            params = {}
+
         response = self._session.session.request(
-            method=method, url=url, params=params, data=data,
+            method=method, url=url, params=params, json=json,
             timeout=self._session.timeout
         )
 
         response.raise_for_status()
 
-        # might create an object associated to response to allow for 
-        # methods like EloquaResponse.to_dataframe()
-        return response
-        
+        return response 
 
 class EloquaRequest:
     def __init__(self, method, endpoint, api_type=None,
@@ -150,11 +147,6 @@ class Cursor:
     def __next__(self):
         if not self._queue and not self.load():
             raise StopIteration()
-        # BULK returns `limit` at a time, REST returns 1
-        if self._api_type == 'BULK':
-            queue = self._queue
-            self._queue = []
-            return queue
         else:
             return self._queue.pop(0)
 
@@ -179,23 +171,24 @@ class Cursor:
         ).json()
         
         self._data = deepcopy(response)
+        
+        self._total = 1
+        for key in ['total', 'totalResults']:
+            if key in response:
+                self._total = response[key]
 
         if self._api_type == 'BULK':
-            self._total = response['totalResults']
             self._params['offset'] += self._params['limit']
-            self._finished = response['hasMore']
-        else:
-            if 'total' in response:
-                self._total = response['total'] 
+            if 'hasMore' in response:
+                self._finished = not response['hasMore']
             else:
-                self._total = 1
-
+                self._finished = True
+        else:
             pages = self._pages or int((self._total - 1) / PAGE_SIZE) + 1
             page = response['page'] if 'page' in response else 1
             self._params['page'] = page + 1
             self._finished = not (page < pages) # "not pages left"
-        
-        for key in ['elements','items']:
+        for key in ['elements', 'items']:
             if key in response:
                 self._queue = response[key]
                 del self._data[key]
@@ -207,7 +200,7 @@ class Cursor:
         if self._api_type == 'BULK':
             self._response['items'] = []
             for queue in self:
-                self._response['items'].extend(queue)
+                self._response['items'].append(queue)
         else:
             self._response['elements'] = []
             for element in self:
