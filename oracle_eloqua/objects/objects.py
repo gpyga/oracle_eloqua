@@ -3,8 +3,9 @@ from warnings import warn
 
 class EloquaObject:
     """ 
-    Generic object class for Eloqua objects. Can retireve attributes
-    as items in dict or as attributes in object.
+    Generic object class for Eloqua objects. Can retrieve attributes
+    as items in dict or as attributes in object (similar to 
+    pandas.DataFrame).
     """
 
     def __init__(self, obj_id=None, api=None):
@@ -86,4 +87,3 @@ class EloquaObject:
     def delete(self):
         # Will work on this after permission
         warn('This method is intentially left blank')
-
