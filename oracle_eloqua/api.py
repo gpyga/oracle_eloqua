@@ -71,8 +71,6 @@ class EloquaApi:
             timeout=self._session.timeout
         )
 
-        response.raise_for_status()
-
         return response 
 
 class EloquaRequest:
@@ -119,7 +117,7 @@ class EloquaRequest:
 class Cursor:
     """
     A cursor for handling GET requests, including an iterator
-    for handling large responses (>1k for REST, >50k for BULK)
+    for handling large responses 
     """
     def __init__(self, params=None, path=None, 
                  api=None, api_type=None):
@@ -135,9 +133,13 @@ class Cursor:
         self._total = None
 
         # Explicit BULK API Handling
+        low_limit = ['fields','lists','','','']
         if self._api_type == 'BULK':
             if 'limit' not in self._params:
-                self._params['limit'] = 50000
+                if 'data' in self._path:
+                    self._params['limit'] = 50000
+                else:
+                    self._params['limit'] = 1000
             if 'offset' not in self._params:
                 self._params['offset'] = 0
 

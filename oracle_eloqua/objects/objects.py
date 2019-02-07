@@ -31,12 +31,32 @@ class EloquaObject:
             self._data[key] = value
         super().__setattr__(key, value)
         
+    def __repr__(self):
+        return json.dumps(
+            self.export(self._data),
+            sort_keys=True,
+            indent=4
+        )
+
     def _set_data(self, data):
         self._data = data
         for key, value in self._data.items():
             setattr(self, key, value)
         if not hasattr(self, '_id'):
             self._id = self['id']
+
+    def export(self, data):
+        if isinstance(data, type(self)):
+            data = data.export(data._data)
+        elif isinstance(data, dict):
+            data = dict((key, self.export(value))
+                        for key, value in data.items()
+                        if value is not None)
+        elif isinstance(data, list):
+            data = [self.export(value) for value in data]
+
+        return data
+
 
     @classmethod
     def create_object(cls, data, api=None):
